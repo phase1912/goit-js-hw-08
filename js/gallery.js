@@ -79,6 +79,7 @@ gallery.innerHTML = images
         src="${preview}"
         data-index="${i}"
         alt="${description}"
+        data-source="${original}"
       />
     </a>
   </li>
@@ -91,14 +92,15 @@ gallery.addEventListener('click', (e) => {
     const img = e.target;
     if (img.nodeName !== 'IMG') return;
 
+    const originalSrc = img.dataset.source;
+    const description = img.alt;
+
     currentIndex = Number(img.dataset.index);
-    openModal(currentIndex);
+    openModal(originalSrc, description);
     addClickListeners();
 });
 
-function openModal(index) {
-    const { original, description } = images[index];
-
+function openModal(original, description) {
     instance = basicLightbox.create(
         `
     <div class="modal-wrapper">
@@ -148,23 +150,36 @@ function navigate(direction) {
     if (isAnimating) return;
     isAnimating = true;
 
+    const currentImgSrc = instance.element().querySelector('img').src;
+
+    const imageElements = Array.from(document.querySelectorAll('.gallery-image'));
+
+    const currentIndex = imageElements.findIndex(img => img.dataset.source === currentImgSrc);
+
+    let nextIndex = currentIndex + direction;
+    if (nextIndex < 0) nextIndex = imageElements.length - 1;
+    if (nextIndex >= imageElements.length) nextIndex = 0;
+
+    const nextImg = imageElements[nextIndex];
+    const newSrc = nextImg.dataset.source;
+    const newAlt = nextImg.alt;
+
+    animateImageTransition(newSrc, newAlt, direction);
+}
+
+function animateImageTransition(newSrc, newAlt, direction) {
     const container = instance.element().querySelector('.modal-wrapper');
     const oldImg = container.querySelector('img');
 
-    const nextIndex =
-        (currentIndex + direction + images.length) % images.length;
-    const { original, description } = images[nextIndex];
-
     const newImg = document.createElement('img');
-    newImg.src = original;
-    newImg.alt = description;
+    newImg.src = newSrc;
+    newImg.alt = newAlt;
     newImg.classList.add('img-animate');
 
     const outAnim = direction === 1 ? 'slideOutLeft' : 'slideOutRight';
     const inAnim = direction === 1 ? 'slideInRight' : 'slideInLeft';
 
     oldImg.style.animation = `${outAnim} 0.4s forwards`;
-
     container.appendChild(newImg);
     newImg.style.animation = `${inAnim} 0.4s forwards`;
 
@@ -173,6 +188,5 @@ function navigate(direction) {
         newImg.classList.remove('img-animate');
         isAnimating = false;
     }, 400);
-
-    currentIndex = nextIndex;
 }
+
